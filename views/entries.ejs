@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Manage Entries - SF Expenses Portal</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 font-sans flex h-screen">
+
+  <!-- Main Left Sidebar Navigation -->
+  <aside class="w-64 bg-slate-900 text-white flex flex-col justify-between">
+    <div>
+      <div class="p-6 text-xl font-bold border-b border-slate-800">My Dashboard</div>
+      <nav class="mt-4">
+        <div class="px-6 py-2 text-xs text-slate-400 uppercase tracking-wider">Portals</div>
+        <a href="/dashboard" class="flex items-center px-6 py-3 bg-blue-600 text-white font-medium">
+          SF Expenses Portal
+        </a>
+        <a href="#" class="flex items-center px-6 py-3 text-slate-300 hover:bg-slate-800">
+          Menu Two (Portal 2)
+        </a>
+        <a href="#" class="flex items-center px-6 py-3 text-slate-300 hover:bg-slate-800">
+          Menu Three (Portal 3)
+        </a>
+      </nav>
+    </div>
+    <div class="p-4 border-t border-slate-800">
+      <a href="/settings" class="block py-2 text-sm text-slate-300 hover:text-white">Settings</a>
+      <a href="/logout" class="block py-2 text-sm text-red-400 hover:text-red-300">Logout</a>
+    </div>
+  </aside>
+
+  <!-- Main View Area -->
+  <main class="flex-1 overflow-y-auto p-8">
+    <div class="flex justify-between items-center mb-4">
+      <h1 class="text-2xl font-bold text-gray-800">SF Expenses Portal</h1>
+    </div>
+
+    <!-- Sub-page Tab Navigation -->
+    <div class="flex border-b border-gray-200 mb-6">
+      <a href="/dashboard" class="py-2 px-4 font-semibold text-sm text-gray-500 hover:text-gray-700">
+        Overview & Summary
+      </a>
+      <a href="/entries" class="py-2 px-4 font-semibold text-sm border-b-2 border-blue-600 text-blue-600">
+        Manage All Entries (Edit / Delete)
+      </a>
+    </div>
+
+    <!-- Entries Management Table -->
+    <div class="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+      <div class="p-4 border-b border-gray-200 bg-gray-50 flex justify-between items-center">
+        <h2 class="font-bold text-gray-700">All Individual Entries</h2>
+        <span class="text-xs text-gray-500">Edit values directly and click Update, or Delete unwanted records</span>
+      </div>
+
+      <table class="w-full text-left border-collapse">
+        <thead>
+          <tr class="border-b bg-gray-100 text-sm font-semibold text-gray-600">
+            <th class="p-3 border-r">Account / Vendor</th>
+            <th class="p-3 border-r w-32">Amount</th>
+            <th class="p-3 border-r w-40">Month</th>
+            <th class="p-3 border-r w-36">Date</th>
+            <th class="p-3 border-r">Reason / Notes</th>
+            <th class="p-3 text-center w-40">Actions</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y text-sm text-gray-700">
+          <% if (entries.length === 0) { %>
+            <tr>
+              <td colspan="6" class="p-4 text-center text-gray-500">No entries recorded yet.</td>
+            </tr>
+          <% } else { %>
+            <% entries.forEach(entry => { %>
+              <tr class="hover:bg-gray-50">
+                <form action="/entries/edit/<%= entry.id %>" method="POST">
+                  <td class="p-2 border-r">
+                    <select name="account_id" required class="w-full border border-gray-300 rounded p-1 text-sm">
+                      <% accounts.forEach(acc => { %>
+                        <option value="<%= acc.id %>" <%= entry.account_id === acc.id ? 'selected' : '' %>>
+                          <%= acc.name %>
+                        </option>
+                      <% }) %>
+                    </select>
+                  </td>
+                  <td class="p-2 border-r">
+                    <input type="number" step="0.01" name="amount" value="<%= entry.amount %>" required 
+                           class="w-full border border-gray-300 rounded p-1 text-sm font-bold">
+                  </td>
+                  <td class="p-2 border-r">
+                    <input type="text" name="month" value="<%= entry.month %>" required 
+                           class="w-full border border-gray-300 rounded p-1 text-sm">
+                  </td>
+                  <td class="p-2 border-r">
+                    <input type="date" name="date" value="<%= entry.date %>" required 
+                           class="w-full border border-gray-300 rounded p-1 text-sm">
+                  </td>
+                  <td class="p-2 border-r">
+                    <input type="text" name="notes" value="<%= entry.notes || '' %>" 
+                           class="w-full border border-gray-300 rounded p-1 text-sm">
+                  </td>
+                  <td class="p-2 text-center">
+                    <div class="flex justify-center gap-2">
+                      <button type="submit" class="bg-blue-600 text-white px-2.5 py-1 rounded text-xs hover:bg-blue-700">
+                        Update
+                      </button>
+                </form>
+                      <form action="/entries/delete/<%= entry.id %>" method="POST" onsubmit="return confirm('Are you sure you want to delete this entry?');">
+                        <button type="submit" class="bg-red-600 text-white px-2.5 py-1 rounded text-xs hover:bg-red-700">
+                          Delete
+                        </button>
+                      </form>
+                    </div>
+                  </td>
+              </tr>
+            <% }) %>
+          <% } %>
+        </tbody>
+      </table>
+    </div>
+  </main>
+
+</body>
+</html>
