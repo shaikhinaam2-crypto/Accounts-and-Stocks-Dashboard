@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title><%= site.appTitle %> - <%= site.subMenus.monthlyTotals %></title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+  
+  <style>
+    @media print {
+      aside, .no-print, form, #loadingOverlay {
+        display: none !important;
+      }
+      main {
+        padding: 0 !important;
+        overflow: visible !important;
+      }
+      .printable-area {
+        border: none !important;
+        box-shadow: none !important;
+      }
+    }
+  </style>
+</head>
+<body class="bg-gray-100 font-sans flex h-screen relative">
+
+  <!-- Global Database Loading Overlay -->
+  <div id="loadingOverlay" class="fixed inset-0 bg-slate-900 bg-opacity-50 z-50 hidden flex-col items-center justify-center text-white backdrop-blur-sm">
+    <svg class="animate-spin h-10 w-10 text-blue-500 mb-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+      <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+      <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+    </svg>
+    <p class="text-sm font-semibold tracking-wide">Fetching Monthly Aggregations...</p>
+  </div>
+
+ <!-- Main Left Sidebar Navigation -->
+<aside class="w-64 bg-slate-900 text-white flex flex-col justify-between shrink-0 no-print">
+  <div>
+    <div class="p-6 text-lg font-bold border-b border-slate-800 leading-snug"><%= site.appTitle %></div>
+    <nav class="mt-4">
+      <div class="px-6 py-2 text-xs text-slate-400 uppercase tracking-wider">Portals</div>
+      
+      <!-- Portal 1 -->
+      <a href="<%= site.portals.expenses.path %>" onclick="showLoader()" class="flex items-center px-6 py-3 bg-blue-600 text-white font-medium text-sm">
+        <%= site.portals.expenses.name %>
+      </a>
+
+      <!-- Portal 2 (Credit & Debit Ledger) -->
+      <a href="<%= site.portals.ledger.path %>" onclick="showLoader()" class="flex items-center px-6 py-3 text-slate-300 hover:bg-slate-800 text-sm">
+        <%= site.portals.ledger.name %>
+      </a>
+
+      <!-- Portal 3 -->
+      <a href="<%= site.portals.menuThree.path %>" class="flex items-center px-6 py-3 text-slate-300 hover:bg-slate-800 text-sm">
+        <%= site.portals.menuThree.name %>
+      </a>
+    </nav>
+  </div>
+  <div class="p-4 border-t border-slate-800">
+    <a href="/settings" onclick="showLoader()" class="block py-2 text-sm text-slate-300 hover:text-white">Settings</a>
+    <a href="/logout" onclick="showLoader()" class="block py-2 text-sm text-red-400 hover:text-red-300">Logout</a>
+  </div>
+</aside>
+
+  <!-- Main View Area -->
+  <main class="flex-1 overflow-y-auto p-8">
+    <div class="flex flex-wrap justify-between items-center mb-4 gap-4 no-print">
+      <h1 class="text-2xl font-bold text-gray-800"><%= site.portals.expenses.name %></h1>
+      <div class="flex flex-wrap gap-3">
+        <div class="text-xs bg-red-50 text-red-800 border border-red-200 px-3 py-1.5 rounded-lg font-semibold">
+          Expenses: <%= overallExpenses.toLocaleString() %> PKR
+        </div>
+        <div class="text-xs bg-emerald-50 text-emerald-800 border border-emerald-200 px-3 py-1.5 rounded-lg font-semibold">
+          Received: <%= overallReceived.toLocaleString() %> PKR
+        </div>
+        <div class="text-xs <%= overallProfitLoss >= 0 ? 'bg-green-100 text-green-900 border-green-300' : 'bg-rose-100 text-rose-900 border-rose-300' %> border px-3 py-1.5 rounded-lg font-bold">
+          Net Profit/Loss: <%= overallProfitLoss.toLocaleString() %> PKR
+        </div>
+      </div>
+    </div>
+
+    <!-- Dynamic Sub-page Tab Navigation -->
+    <div class="flex border-b border-gray-200 mb-6 no-print">
+      <a href="/dashboard" onclick="showLoader()" class="py-2 px-4 font-semibold text-sm text-gray-500 hover:text-gray-700">
+        <%= site.subMenus.overview %>
+      </a>
+      <a href="/cod-portal" onclick="showLoader()" class="py-2 px-4 font-semibold text-sm text-gray-500 hover:text-gray-700">
+        <%= site.subMenus.codPortal %>
+      </a>
+      <a href="/monthly-totals" onclick="showLoader()" class="py-2 px-4 font-semibold text-sm border-b-2 border-blue-600 text-blue-600">
+        <%= site.subMenus.monthlyTotals %>
+      </a>
+      <a href="/entries" onclick="showLoader()" class="py-2 px-4 font-semibold text-sm text-gray-500 hover:text-gray-700">
+        <%= site.subMenus.manageEntries %>
+      </a>
+    </div>
+
+    <!-- Monthly Profit and Loss Aggregation Table -->
+    <div class="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden printable-area" id="profitTable">
+      <div class="p-4 border-b border-gray-200 bg-gray-50 flex justify-between items-center">
+        <div>
+          <h2 class="font-bold text-gray-700">Monthly Profit & Loss Summary</h2>
+          <span class="text-xs text-gray-500">Calculated as: Received (COD) - Expenses</span>
+        </div>
+        <div class="flex gap-2 no-print">
+          <button onclick="window.print()" class="bg-slate-700 text-white text-xs px-3 py-1.5 rounded hover:bg-slate-800 transition">
+            Print
+          </button>
+          <button onclick="exportProfitPDF()" class="bg-emerald-600 text-white text-xs px-3 py-1.5 rounded hover:bg-emerald-700 transition">
+            Download PDF
+          </button>
+        </div>
+      </div>
+
+      <table class="w-full text-left border-collapse">
+        <thead>
+          <tr class="border-b bg-gray-100 text-sm font-semibold text-gray-600">
+            <th class="p-3 border-r">Month</th>
+            <th class="p-3 border-r text-red-600">Total Expenses</th>
+            <th class="p-3 border-r text-emerald-600">Total COD Received</th>
+            <th class="p-3 text-right">Profit / Loss</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y text-sm text-gray-700">
+          <% if (monthlySummaries.length === 0) { %>
+            <tr>
+              <td colspan="4" class="p-4 text-center text-gray-500">No data available for profit/loss calculation.</td>
+            </tr>
+          <% } else { %>
+            <% monthlySummaries.forEach(row => { 
+                const exp = parseFloat(row.total_expenses);
+                const rec = parseFloat(row.total_received);
+                const diff = parseFloat(row.profit_loss);
+            %>
+              <tr class="hover:bg-gray-50">
+                <td class="p-3 border-r font-bold text-gray-800"><%= row.month %></td>
+                <td class="p-3 border-r font-medium text-red-600"><%= exp.toLocaleString() %> PKR</td>
+                <td class="p-3 border-r font-medium text-emerald-600"><%= rec.toLocaleString() %> PKR</td>
+                <td class="p-3 text-right font-bold text-base <%= diff >= 0 ? 'text-green-600' : 'text-red-600' %>">
+                  <%= diff >= 0 ? '+' : '' %><%= diff.toLocaleString() %> PKR
+                </td>
+              </tr>
+            <% }) %>
+          <% } %>
+        </tbody>
+      </table>
+    </div>
+  </main>
+
+  <script>
+    function showLoader() {
+      const loader = document.getElementById('loadingOverlay');
+      loader.classList.remove('hidden');
+      loader.classList.add('flex');
+    }
+
+    function exportProfitPDF() {
+      const element = document.getElementById('profitTable');
+      const opt = {
+        margin:       0.5,
+        filename:     `Monthly_Profit_Loss_Summary.pdf`,
+        image:        { type: 'jpeg', quality: 0.98 },
+        html2canvas:  { scale: 2 },
+        jsPDF:        { unit: 'in', format: 'letter', orientation: 'landscape' }
+      };
+      html2pdf().set(opt).from(element).save();
+    }
+  </script>
+
+</body>
+</html>

@@ -8,28 +8,34 @@
 </head>
 <body class="bg-gray-100 font-sans flex h-screen">
 
-  <!-- Sidebar Navigation -->
-  <aside class="w-64 bg-slate-900 text-white flex flex-col justify-between">
-    <div>
-      <div class="p-6 text-xl font-bold border-b border-slate-800">My Dashboard</div>
-      <nav class="mt-4">
-        <div class="px-6 py-2 text-xs text-slate-400 uppercase tracking-wider">Portals</div>
-        <a href="/dashboard" class="flex items-center px-6 py-3 text-slate-300 hover:bg-slate-800">
-          SF Expenses Portal
-        </a>
-        <a href="#" class="flex items-center px-6 py-3 text-slate-300 hover:bg-slate-800">
-          Menu Two (Portal 2)
-        </a>
-        <a href="#" class="flex items-center px-6 py-3 text-slate-300 hover:bg-slate-800">
-          Menu Three (Portal 3)
-        </a>
-      </nav>
-    </div>
-    <div class="p-4 border-t border-slate-800">
-      <a href="/settings" class="block py-2 text-sm text-white font-medium">Settings</a>
-      <a href="/logout" class="block py-2 text-sm text-red-400 hover:text-red-300">Logout</a>
-    </div>
-  </aside>
+  <!-- Main Left Sidebar Navigation -->
+<aside class="w-64 bg-slate-900 text-white flex flex-col justify-between shrink-0 no-print">
+  <div>
+    <div class="p-6 text-lg font-bold border-b border-slate-800 leading-snug"><%= site.appTitle %></div>
+    <nav class="mt-4">
+      <div class="px-6 py-2 text-xs text-slate-400 uppercase tracking-wider">Portals</div>
+      
+      <!-- Portal 1 -->
+      <a href="<%= site.portals.expenses.path %>" onclick="showLoader()" class="flex items-center px-6 py-3 bg-blue-600 text-white font-medium text-sm">
+        <%= site.portals.expenses.name %>
+      </a>
+
+      <!-- Portal 2 (Credit & Debit Ledger) -->
+      <a href="<%= site.portals.ledger.path %>" onclick="showLoader()" class="flex items-center px-6 py-3 text-slate-300 hover:bg-slate-800 text-sm">
+        <%= site.portals.ledger.name %>
+      </a>
+
+      <!-- Portal 3 -->
+      <a href="<%= site.portals.menuThree.path %>" class="flex items-center px-6 py-3 text-slate-300 hover:bg-slate-800 text-sm">
+        <%= site.portals.menuThree.name %>
+      </a>
+    </nav>
+  </div>
+  <div class="p-4 border-t border-slate-800">
+    <a href="/settings" onclick="showLoader()" class="block py-2 text-sm text-slate-300 hover:text-white">Settings</a>
+    <a href="/logout" onclick="showLoader()" class="block py-2 text-sm text-red-400 hover:text-red-300">Logout</a>
+  </div>
+</aside>
 
   <!-- Main View Area -->
   <main class="flex-1 p-8 overflow-y-auto">

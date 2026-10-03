@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title><%= site.appTitle %> - <%= site.subMenus.codPortal %></title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  
+  <style>
+    @media print {
+      aside, .no-print, form, #loadingOverlay {
+        display: none !important;
+      }
+      main {
+        padding: 0 !important;
+        overflow: visible !important;
+      }
+    }
+  </style>
+</head>
+<body class="bg-gray-100 font-sans flex h-screen relative">
+
+  <!-- Global Database Loading Overlay -->
+  <div id="loadingOverlay" class="fixed inset-0 bg-slate-900 bg-opacity-50 z-50 hidden flex-col items-center justify-center text-white backdrop-blur-sm">
+    <svg class="animate-spin h-10 w-10 text-emerald-500 mb-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+      <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+      <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+    </svg>
+    <p class="text-sm font-semibold tracking-wide">Processing COD Entry...</p>
+  </div>
+
+<!-- Main Left Sidebar Navigation -->
+<aside class="w-64 bg-slate-900 text-white flex flex-col justify-between shrink-0 no-print">
+  <div>
+    <div class="p-6 text-lg font-bold border-b border-slate-800 leading-snug"><%= site.appTitle %></div>
+    <nav class="mt-4">
+      <div class="px-6 py-2 text-xs text-slate-400 uppercase tracking-wider">Portals</div>
+      
+      <!-- Portal 1 -->
+      <a href="<%= site.portals.expenses.path %>" onclick="showLoader()" class="flex items-center px-6 py-3 bg-blue-600 text-white font-medium text-sm">
+        <%= site.portals.expenses.name %>
+      </a>
+
+      <!-- Portal 2 (Credit & Debit Ledger) -->
+      <a href="<%= site.portals.ledger.path %>" onclick="showLoader()" class="flex items-center px-6 py-3 text-slate-300 hover:bg-slate-800 text-sm">
+        <%= site.portals.ledger.name %>
+      </a>
+
+      <!-- Portal 3 -->
+      <a href="<%= site.portals.menuThree.path %>" class="flex items-center px-6 py-3 text-slate-300 hover:bg-slate-800 text-sm">
+        <%= site.portals.menuThree.name %>
+      </a>
+    </nav>
+  </div>
+  <div class="p-4 border-t border-slate-800">
+    <a href="/settings" onclick="showLoader()" class="block py-2 text-sm text-slate-300 hover:text-white">Settings</a>
+    <a href="/logout" onclick="showLoader()" class="block py-2 text-sm text-red-400 hover:text-red-300">Logout</a>
+  </div>
+</aside>
+
+  <!-- Main View Area -->
+  <main class="flex-1 overflow-y-auto p-8">
+    <div class="flex flex-wrap justify-between items-center mb-6 gap-4 no-print">
+      <div>
+        <h1 class="text-2xl font-bold text-gray-800"><%= site.portals.expenses.name %></h1>
+        <p class="text-xs text-gray-500 mt-1">COD Settlement Management</p>
+      </div>
+      <div class="text-sm bg-emerald-50 text-emerald-800 border border-emerald-200 px-4 py-2 rounded-lg font-semibold shadow-sm">
+        Total COD Received: <span class="text-base font-bold"><%= totalCodReceived.toLocaleString() %> PKR</span>
+      </div>
+    </div>
+
+    <!-- Dynamic Sub-page Tab Navigation -->
+    <div class="flex flex-wrap border-b border-gray-200 mb-8 gap-2 no-print">
+      <a href="/dashboard" onclick="showLoader()" class="py-2.5 px-4 font-semibold text-sm text-gray-500 hover:text-gray-700">
+        <%= site.subMenus.overview %>
+      </a>
+      <a href="/cod-portal" onclick="showLoader()" class="py-2.5 px-4 font-semibold text-sm border-b-2 border-emerald-600 text-emerald-600">
+        <%= site.subMenus.codPortal %>
+      </a>
+      <a href="/monthly-totals" onclick="showLoader()" class="py-2.5 px-4 font-semibold text-sm text-gray-500 hover:text-gray-700">
+        <%= site.subMenus.monthlyTotals %>
+      </a>
+      <a href="/entries" onclick="showLoader()" class="py-2.5 px-4 font-semibold text-sm text-gray-500 hover:text-gray-700">
+        <%= site.subMenus.manageEntries %>
+      </a>
+    </div>
+
+    <!-- Forms Section -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8 no-print">
+      
+      <!-- 1. Create COD Account Form -->
+      <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
+        <h2 class="text-base font-bold text-gray-800 mb-4 pb-2 border-b border-gray-100">1. Create COD Payment Account</h2>
+        <form action="/cod-accounts/create" method="POST" class="flex flex-col sm:flex-row gap-3 db-form">
+          <input type="text" name="name" placeholder="Courier Account (e.g. CallCourier, TCS)" required
+                 class="flex-1 border border-gray-300 p-2.5 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500">
+          <button type="submit" class="bg-slate-800 text-white px-5 py-2.5 rounded-lg text-sm font-semibold hover:bg-slate-700 transition">
+            Add Account
+          </button>
+        </form>
+      </div>
+
+      <!-- 2. Add COD Received Entry Form -->
+      <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
+        <h2 class="text-base font-bold text-gray-800 mb-4 pb-2 border-b border-gray-100">2. Record COD Amount Received</h2>
+        <form action="/cod-entries/create" method="POST" class="space-y-4 db-form">
+          
+          <div class="relative" id="codSearchableDropdown">
+            <input type="hidden" name="account_id" id="selectedCodAccountId" required>
+            
+            <button type="button" id="codDropdownBtn"
+                    class="w-full border border-gray-300 p-2.5 rounded-lg text-left flex justify-between items-center bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500 text-sm text-gray-700">
+              <span id="selectedCodAccountLabel">Select COD Partner / Account</span>
+              <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+              </svg>
+            </button>
+
+            <div id="codDropdownMenu" class="hidden absolute left-0 right-0 top-full mt-1 bg-white border border-gray-300 rounded-lg shadow-xl z-30 p-2 max-h-60 overflow-y-auto">
+              <div class="sticky top-0 bg-white pb-2 border-b mb-2">
+                <input type="text" id="codVendorSearchInput" placeholder="Type to filter..."
+                       class="w-full border border-gray-300 px-3 py-1.5 rounded text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500">
+              </div>
+              <ul class="divide-y divide-gray-100 text-sm">
+                <% accounts.forEach(acc => { %>
+                  <li data-id="<%= acc.id %>" data-name="<%= acc.name %>" 
+                      class="cod-vendor-option px-3 py-2 hover:bg-emerald-50 cursor-pointer rounded text-gray-700">
+                    <%= acc.name %>
+                  </li>
+                <% }) %>
+              </ul>
+              <div id="noCodVendorFound" class="hidden text-xs text-gray-400 p-2 text-center">No matching account found</div>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label class="block text-xs font-semibold text-gray-500 mb-1">Received Amount (PKR)</label>
+              <input type="number" step="0.01" name="amount" placeholder="e.g. 50000" required 
+                     class="w-full border border-gray-300 p-2.5 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500">
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-gray-500 mb-1">Month Period</label>
+              <input type="text" name="month" value="<%= defaultMonth %>" required 
+                     class="w-full border border-gray-300 p-2.5 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500">
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label class="block text-xs font-semibold text-gray-500 mb-1">Transaction Date</label>
+              <input type="date" name="date" value="<%= defaultDate %>" required 
+                     class="w-full border border-gray-300 p-2.5 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500">
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-gray-500 mb-1">Notes / Reference #</label>
+              <input type="text" name="notes" placeholder="e.g. Batch #104 settlement" 
+                     class="w-full border border-gray-300 p-2.5 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500">
+            </div>
+          </div>
+
+          <button type="submit" class="w-full bg-emerald-600 text-white py-2.5 rounded-lg font-semibold text-sm hover:bg-emerald-700 transition shadow-sm">
+            Save COD Receipt
+          </button>
+        </form>
+      </div>
+
+    </div>
+
+    <!-- Receipts History Table -->
+    <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+      <div class="p-4 border-b border-gray-200 bg-gray-50 flex justify-between items-center">
+        <h2 class="font-bold text-gray-700">COD Receipts History</h2>
+        <span class="text-xs text-gray-500">Individual settlement entries</span>
+      </div>
+      <div class="overflow-x-auto">
+        <table class="w-full text-left border-collapse min-w-[600px]">
+          <thead>
+            <tr class="border-b bg-gray-100 text-xs font-semibold text-gray-600 uppercase tracking-wider">
+              <th class="p-3.5 border-r">Month</th>
+              <th class="p-3.5 border-r">Date</th>
+              <th class="p-3.5 border-r">COD Account</th>
+              <th class="p-3.5 border-r">Notes / Details</th>
+              <th class="p-3.5 text-right">Received Amount</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y text-sm text-gray-700">
+            <% if (entries.length === 0) { %>
+              <tr>
+                <td colspan="5" class="p-6 text-center text-gray-400">No COD receipts recorded yet.</td>
+              </tr>
+            <% } else { %>
+              <% entries.forEach(row => { %>
+                <tr class="hover:bg-gray-50 transition">
+                  <td class="p-3.5 border-r font-medium text-gray-800"><%= row.month %></td>
+                  <td class="p-3.5 border-r text-gray-500"><%= row.date %></td>
+                  <td class="p-3.5 border-r font-semibold text-gray-900"><%= row.account_name %></td>
+                  <td class="p-3.5 border-r text-gray-600"><%= row.notes || '-' %></td>
+                  <td class="p-3.5 text-right font-bold text-emerald-700">
+                    <%= parseFloat(row.amount).toLocaleString() %> PKR
+                  </td>
+                </tr>
+              <% }) %>
+            <% } %>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+  </main>
+
+  <script>
+    function showLoader() {
+      const loader = document.getElementById('loadingOverlay');
+      loader.classList.remove('hidden');
+      loader.classList.add('flex');
+    }
+
+    document.querySelectorAll('.db-form').forEach(form => {
+      form.addEventListener('submit', function(e) {
+        const accountId = document.getElementById('selectedCodAccountId').value;
+        if (!accountId && this.contains(document.getElementById('codSearchableDropdown'))) {
+          e.preventDefault();
+          alert('Please select a COD Partner / Account');
+          return;
+        }
+        showLoader();
+      });
+    });
+
+    const codDropdownBtn = document.getElementById('codDropdownBtn');
+    const codDropdownMenu = document.getElementById('codDropdownMenu');
+    const codVendorSearchInput = document.getElementById('codVendorSearchInput');
+    const codVendorOptions = document.querySelectorAll('.cod-vendor-option');
+    const selectedCodAccountId = document.getElementById('selectedCodAccountId');
+    const selectedCodAccountLabel = document.getElementById('selectedCodAccountLabel');
+    const noCodVendorFound = document.getElementById('noCodVendorFound');
+
+    codDropdownBtn.addEventListener('click', () => {
+      codDropdownMenu.classList.toggle('hidden');
+      if (!codDropdownMenu.classList.contains('hidden')) {
+        codVendorSearchInput.focus();
+      }
+    });
+
+    codVendorSearchInput.addEventListener('input', function() {
+      const filter = this.value.toLowerCase().trim();
+      let visibleCount = 0;
+
+      codVendorOptions.forEach(opt => {
+        const text = opt.getAttribute('data-name').toLowerCase();
+        if (text.includes(filter)) {
+          opt.style.display = 'block';
+          visibleCount++;
+        } else {
+          opt.style.display = 'none';
+        }
+      });
+
+      if (visibleCount === 0) {
+        noCodVendorFound.classList.remove('hidden');
+      } else {
+        noCodVendorFound.classList.add('hidden');
+      }
+    });
+
+    codVendorOptions.forEach(opt => {
+      opt.addEventListener('click', function() {
+        const id = this.getAttribute('data-id');
+        const name = this.getAttribute('data-name');
+        
+        selectedCodAccountId.value = id;
+        selectedCodAccountLabel.textContent = name;
+        selectedCodAccountLabel.classList.add('font-semibold', 'text-gray-900');
+        
+        codDropdownMenu.classList.add('hidden');
+      });
+    });
+
+    document.addEventListener('click', function(e) {
+      const dropdownContainer = document.getElementById('codSearchableDropdown');
+      if (dropdownContainer && !dropdownContainer.contains(e.target)) {
+        codDropdownMenu.classList.add('hidden');
+      }
+    });
+  </script>
+
+</body>
+</html>

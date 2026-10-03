@@ -2,122 +2,235 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Manage Entries - SF Expenses Portal</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title><%= site.appTitle %> - <%= site.subMenus.manageEntries %></title>
   <script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body class="bg-gray-100 font-sans flex h-screen">
+<body class="bg-gray-100 font-sans flex h-screen relative">
 
-  <!-- Main Left Sidebar Navigation -->
-  <aside class="w-64 bg-slate-900 text-white flex flex-col justify-between">
-    <div>
-      <div class="p-6 text-xl font-bold border-b border-slate-800">My Dashboard</div>
-      <nav class="mt-4">
-        <div class="px-6 py-2 text-xs text-slate-400 uppercase tracking-wider">Portals</div>
-        <a href="/dashboard" class="flex items-center px-6 py-3 bg-blue-600 text-white font-medium">
-          SF Expenses Portal
-        </a>
-        <a href="#" class="flex items-center px-6 py-3 text-slate-300 hover:bg-slate-800">
-          Menu Two (Portal 2)
-        </a>
-        <a href="#" class="flex items-center px-6 py-3 text-slate-300 hover:bg-slate-800">
-          Menu Three (Portal 3)
-        </a>
-      </nav>
-    </div>
-    <div class="p-4 border-t border-slate-800">
-      <a href="/settings" class="block py-2 text-sm text-slate-300 hover:text-white">Settings</a>
-      <a href="/logout" class="block py-2 text-sm text-red-400 hover:text-red-300">Logout</a>
-    </div>
-  </aside>
+  <!-- Global Database Loading Overlay -->
+  <div id="loadingOverlay" class="fixed inset-0 bg-slate-900 bg-opacity-50 z-50 hidden flex-col items-center justify-center text-white backdrop-blur-sm">
+    <svg class="animate-spin h-10 w-10 text-blue-500 mb-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+      <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+      <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+    </svg>
+    <p class="text-sm font-semibold tracking-wide">Updating Database...</p>
+  </div>
+
+ <!-- Main Left Sidebar Navigation -->
+<aside class="w-64 bg-slate-900 text-white flex flex-col justify-between shrink-0 no-print">
+  <div>
+    <div class="p-6 text-lg font-bold border-b border-slate-800 leading-snug"><%= site.appTitle %></div>
+    <nav class="mt-4">
+      <div class="px-6 py-2 text-xs text-slate-400 uppercase tracking-wider">Portals</div>
+      
+      <!-- Portal 1 -->
+      <a href="<%= site.portals.expenses.path %>" onclick="showLoader()" class="flex items-center px-6 py-3 bg-blue-600 text-white font-medium text-sm">
+        <%= site.portals.expenses.name %>
+      </a>
+
+      <!-- Portal 2 (Credit & Debit Ledger) -->
+      <a href="<%= site.portals.ledger.path %>" onclick="showLoader()" class="flex items-center px-6 py-3 text-slate-300 hover:bg-slate-800 text-sm">
+        <%= site.portals.ledger.name %>
+      </a>
+
+      <!-- Portal 3 -->
+      <a href="<%= site.portals.menuThree.path %>" class="flex items-center px-6 py-3 text-slate-300 hover:bg-slate-800 text-sm">
+        <%= site.portals.menuThree.name %>
+      </a>
+    </nav>
+  </div>
+  <div class="p-4 border-t border-slate-800">
+    <a href="/settings" onclick="showLoader()" class="block py-2 text-sm text-slate-300 hover:text-white">Settings</a>
+    <a href="/logout" onclick="showLoader()" class="block py-2 text-sm text-red-400 hover:text-red-300">Logout</a>
+  </div>
+</aside>
 
   <!-- Main View Area -->
   <main class="flex-1 overflow-y-auto p-8">
     <div class="flex justify-between items-center mb-4">
-      <h1 class="text-2xl font-bold text-gray-800">SF Expenses Portal</h1>
+      <h1 class="text-2xl font-bold text-gray-800"><%= site.portals.expenses.name %></h1>
     </div>
 
-    <!-- Sub-page Tab Navigation -->
+    <!-- Dynamic Sub-page Tab Navigation -->
     <div class="flex border-b border-gray-200 mb-6">
-      <a href="/dashboard" class="py-2 px-4 font-semibold text-sm text-gray-500 hover:text-gray-700">
-        Overview & Summary
+      <a href="/dashboard" onclick="showLoader()" class="py-2 px-4 font-semibold text-sm text-gray-500 hover:text-gray-700">
+        <%= site.subMenus.overview %>
       </a>
-      <a href="/entries" class="py-2 px-4 font-semibold text-sm border-b-2 border-blue-600 text-blue-600">
-        Manage All Entries (Edit / Delete)
+      <a href="/cod-portal" onclick="showLoader()" class="py-2 px-4 font-semibold text-sm text-gray-500 hover:text-gray-700">
+        <%= site.subMenus.codPortal %>
+      </a>
+      <a href="/monthly-totals" onclick="showLoader()" class="py-2 px-4 font-semibold text-sm text-gray-500 hover:text-gray-700">
+        <%= site.subMenus.monthlyTotals %>
+      </a>
+      <a href="/entries" onclick="showLoader()" class="py-2 px-4 font-semibold text-sm border-b-2 border-blue-600 text-blue-600">
+        <%= site.subMenus.manageEntries %>
       </a>
     </div>
 
-    <!-- Entries Management Table -->
-    <div class="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+    <!-- SECTION 1: Expense Entries -->
+    <div class="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden mb-10">
       <div class="p-4 border-b border-gray-200 bg-gray-50 flex justify-between items-center">
-        <h2 class="font-bold text-gray-700">All Individual Entries</h2>
-        <span class="text-xs text-gray-500">Edit values directly and click Update, or Delete unwanted records</span>
+        <h2 class="font-bold text-gray-700">1. Expense Entries</h2>
+        <span class="text-xs text-gray-500">Edit or delete recorded expense payments</span>
       </div>
 
-      <table class="w-full text-left border-collapse">
-        <thead>
-          <tr class="border-b bg-gray-100 text-sm font-semibold text-gray-600">
-            <th class="p-3 border-r">Account / Vendor</th>
-            <th class="p-3 border-r w-32">Amount</th>
-            <th class="p-3 border-r w-40">Month</th>
-            <th class="p-3 border-r w-36">Date</th>
-            <th class="p-3 border-r">Reason / Notes</th>
-            <th class="p-3 text-center w-40">Actions</th>
-          </tr>
-        </thead>
-        <tbody class="divide-y text-sm text-gray-700">
-          <% if (entries.length === 0) { %>
-            <tr>
-              <td colspan="6" class="p-4 text-center text-gray-500">No entries recorded yet.</td>
+      <div class="overflow-x-auto">
+        <table class="w-full text-left border-collapse min-w-[700px]">
+          <thead>
+            <tr class="border-b bg-gray-100 text-xs font-semibold text-gray-600 uppercase">
+              <th class="p-3 border-r">Account / Vendor</th>
+              <th class="p-3 border-r w-32">Amount</th>
+              <th class="p-3 border-r w-40">Month</th>
+              <th class="p-3 border-r w-36">Date</th>
+              <th class="p-3 border-r">Reason / Notes</th>
+              <th class="p-3 text-center w-40">Actions</th>
             </tr>
-          <% } else { %>
-            <% entries.forEach(entry => { %>
-              <tr class="hover:bg-gray-50">
-                <form action="/entries/edit/<%= entry.id %>" method="POST">
-                  <td class="p-2 border-r">
-                    <select name="account_id" required class="w-full border border-gray-300 rounded p-1 text-sm">
-                      <% accounts.forEach(acc => { %>
-                        <option value="<%= acc.id %>" <%= entry.account_id === acc.id ? 'selected' : '' %>>
-                          <%= acc.name %>
-                        </option>
-                      <% }) %>
-                    </select>
-                  </td>
-                  <td class="p-2 border-r">
-                    <input type="number" step="0.01" name="amount" value="<%= entry.amount %>" required 
-                           class="w-full border border-gray-300 rounded p-1 text-sm font-bold">
-                  </td>
-                  <td class="p-2 border-r">
-                    <input type="text" name="month" value="<%= entry.month %>" required 
-                           class="w-full border border-gray-300 rounded p-1 text-sm">
-                  </td>
-                  <td class="p-2 border-r">
-                    <input type="date" name="date" value="<%= entry.date %>" required 
-                           class="w-full border border-gray-300 rounded p-1 text-sm">
-                  </td>
-                  <td class="p-2 border-r">
-                    <input type="text" name="notes" value="<%= entry.notes || '' %>" 
-                           class="w-full border border-gray-300 rounded p-1 text-sm">
-                  </td>
-                  <td class="p-2 text-center">
-                    <div class="flex justify-center gap-2">
-                      <button type="submit" class="bg-blue-600 text-white px-2.5 py-1 rounded text-xs hover:bg-blue-700">
-                        Update
-                      </button>
-                </form>
-                      <form action="/entries/delete/<%= entry.id %>" method="POST" onsubmit="return confirm('Are you sure you want to delete this entry?');">
-                        <button type="submit" class="bg-red-600 text-white px-2.5 py-1 rounded text-xs hover:bg-red-700">
-                          Delete
-                        </button>
-                      </form>
-                    </div>
-                  </td>
+          </thead>
+          <tbody class="divide-y text-sm text-gray-700">
+            <% if (!entries || entries.length === 0) { %>
+              <tr>
+                <td colspan="6" class="p-4 text-center text-gray-400">No expense entries recorded yet.</td>
               </tr>
-            <% }) %>
-          <% } %>
-        </tbody>
-      </table>
+            <% } else { %>
+              <% entries.forEach(entry => { %>
+                <tr class="hover:bg-gray-50">
+                  <form action="/entries/edit/<%= entry.id %>" method="POST" class="db-form">
+                    <td class="p-2 border-r">
+                      <select name="account_id" required class="w-full border border-gray-300 rounded p-1 text-sm focus:ring-2 focus:ring-blue-500">
+                        <% accounts.forEach(acc => { %>
+                          <option value="<%= acc.id %>" <%= entry.account_id === acc.id ? 'selected' : '' %>>
+                            <%= acc.name %>
+                          </option>
+                        <% }) %>
+                      </select>
+                    </td>
+                    <td class="p-2 border-r">
+                      <input type="number" step="0.01" name="amount" value="<%= entry.amount %>" required 
+                             class="w-full border border-gray-300 rounded p-1 text-sm font-bold">
+                    </td>
+                    <td class="p-2 border-r">
+                      <input type="text" name="month" value="<%= entry.month %>" required 
+                             class="w-full border border-gray-300 rounded p-1 text-sm">
+                    </td>
+                    <td class="p-2 border-r">
+                      <input type="date" name="date" value="<%= entry.date %>" required 
+                             class="w-full border border-gray-300 rounded p-1 text-sm">
+                    </td>
+                    <td class="p-2 border-r">
+                      <input type="text" name="notes" value="<%= entry.notes || '' %>" 
+                             class="w-full border border-gray-300 rounded p-1 text-sm">
+                    </td>
+                    <td class="p-2 text-center">
+                      <div class="flex justify-center gap-2">
+                        <button type="submit" class="bg-blue-600 text-white px-2.5 py-1 rounded text-xs hover:bg-blue-700 transition">
+                          Update
+                        </button>
+                  </form>
+                        <form action="/entries/delete/<%= entry.id %>" method="POST" class="db-form" onsubmit="return confirm('Delete this expense entry?');">
+                          <button type="submit" class="bg-red-600 text-white px-2.5 py-1 rounded text-xs hover:bg-red-700 transition">
+                            Delete
+                          </button>
+                        </form>
+                      </div>
+                    </td>
+                </tr>
+              <% }) %>
+            <% } %>
+          </tbody>
+        </table>
+      </div>
     </div>
+
+    <!-- SECTION 2: COD Received Entries -->
+    <div class="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+      <div class="p-4 border-b border-gray-200 bg-emerald-50 flex justify-between items-center">
+        <h2 class="font-bold text-emerald-900">2. COD Received Entries</h2>
+        <span class="text-xs text-emerald-700">Edit or delete cash settlements from courier partners</span>
+      </div>
+
+      <div class="overflow-x-auto">
+        <table class="w-full text-left border-collapse min-w-[700px]">
+          <thead>
+            <tr class="border-b bg-gray-100 text-xs font-semibold text-gray-600 uppercase">
+              <th class="p-3 border-r">COD Account / Courier</th>
+              <th class="p-3 border-r w-32">Received Amount</th>
+              <th class="p-3 border-r w-40">Month</th>
+              <th class="p-3 border-r w-36">Date</th>
+              <th class="p-3 border-r">Notes / Reference</th>
+              <th class="p-3 text-center w-40">Actions</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y text-sm text-gray-700">
+            <% if (!codEntries || codEntries.length === 0) { %>
+              <tr>
+                <td colspan="6" class="p-4 text-center text-gray-400">No COD receipts recorded yet.</td>
+              </tr>
+            <% } else { %>
+              <% codEntries.forEach(entry => { %>
+                <tr class="hover:bg-gray-50">
+                  <form action="/cod-entries/edit/<%= entry.id %>" method="POST" class="db-form">
+                    <td class="p-2 border-r">
+                      <select name="account_id" required class="w-full border border-gray-300 rounded p-1 text-sm focus:ring-2 focus:ring-emerald-500">
+                        <% codAccounts.forEach(acc => { %>
+                          <option value="<%= acc.id %>" <%= entry.account_id === acc.id ? 'selected' : '' %>>
+                            <%= acc.name %>
+                          </option>
+                        <% }) %>
+                      </select>
+                    </td>
+                    <td class="p-2 border-r">
+                      <input type="number" step="0.01" name="amount" value="<%= entry.amount %>" required 
+                             class="w-full border border-gray-300 rounded p-1 text-sm font-bold text-emerald-700">
+                    </td>
+                    <td class="p-2 border-r">
+                      <input type="text" name="month" value="<%= entry.month %>" required 
+                             class="w-full border border-gray-300 rounded p-1 text-sm">
+                    </td>
+                    <td class="p-2 border-r">
+                      <input type="date" name="date" value="<%= entry.date %>" required 
+                             class="w-full border border-gray-300 rounded p-1 text-sm">
+                    </td>
+                    <td class="p-2 border-r">
+                      <input type="text" name="notes" value="<%= entry.notes || '' %>" 
+                             class="w-full border border-gray-300 rounded p-1 text-sm">
+                    </td>
+                    <td class="p-2 text-center">
+                      <div class="flex justify-center gap-2">
+                        <button type="submit" class="bg-emerald-600 text-white px-2.5 py-1 rounded text-xs hover:bg-emerald-700 transition">
+                          Update
+                        </button>
+                  </form>
+                        <form action="/cod-entries/delete/<%= entry.id %>" method="POST" class="db-form" onsubmit="return confirm('Delete this COD receipt entry?');">
+                          <button type="submit" class="bg-red-600 text-white px-2.5 py-1 rounded text-xs hover:bg-red-700 transition">
+                            Delete
+                          </button>
+                        </form>
+                      </div>
+                    </td>
+                </tr>
+              <% }) %>
+            <% } %>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
   </main>
+
+  <script>
+    function showLoader() {
+      const loader = document.getElementById('loadingOverlay');
+      loader.classList.remove('hidden');
+      loader.classList.add('flex');
+    }
+
+    document.querySelectorAll('.db-form').forEach(form => {
+      form.addEventListener('submit', function() {
+        showLoader();
+      });
+    });
+  </script>
 
 </body>
 </html>
