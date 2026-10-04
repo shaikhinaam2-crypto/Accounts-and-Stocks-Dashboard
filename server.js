@@ -1,8 +1,8 @@
-require('dotenv').config(); // Load environment variables from .env
+require('dotenv').config();
 const express = require('express');
 const session = require('express-session');
 const bcrypt = require('bcrypt');
-const pool = require('./db'); // Clean DB connection client
+const pool = require('./db');
 const config = require('./config');
 const ledgerRoutes = require('./routes/ledger');
 
@@ -59,14 +59,21 @@ app.get('/logout', (req, res) => {
   res.redirect('/login');
 });
 
-// 1. Expense Dashboard Route
+// 1. Expense Dashboard Route (Filtered by req.session.userId)
 app.get('/dashboard', requireAuth, async (req, res) => {
+  const userId = req.session.userId;
   const currentMonth = new Date().toLocaleString('default', { month: 'long', year: 'numeric' });
   const selectedMonth = req.query.month || currentMonth;
 
   try {
-    const accountsRes = await pool.query("SELECT * FROM payment_accounts ORDER BY name ASC");
-    const monthRowsRes = await pool.query("SELECT DISTINCT month FROM expense_entries ORDER BY month DESC");
+    const accountsRes = await pool.query(
+      "SELECT * FROM payment_accounts WHERE user_id = $1 ORDER BY name ASC", 
+      [userId]
+    );
+    const monthRowsRes = await pool.query(
+      "SELECT DISTINCT month FROM expense_entries WHERE user_id = $1 ORDER BY month DESC", 
+      [userId]
+    );
     
     let availableMonths = monthRowsRes.rows.map(m => m.month);
     if (!availableMonths.includes(currentMonth)) {
@@ -79,11 +86,12 @@ app.get('/dashboard', requireAuth, async (req, res) => {
         p.name AS account_name
       FROM expense_entries e
       JOIN payment_accounts p ON e.account_id = p.id
+      WHERE e.user_id = $1
     `;
-    let params = [];
+    let params = [userId];
 
     if (selectedMonth !== 'ALL') {
-      query += ` WHERE e.month = $1`;
+      query += ` AND e.month = $2`;
       params.push(selectedMonth);
     }
     query += ` ORDER BY e.id DESC`;
@@ -125,18 +133,23 @@ app.get('/dashboard', requireAuth, async (req, res) => {
   }
 });
 
-// 2. Sub-portal: COD Received Management
+// 2. COD Received Portal (Filtered by req.session.userId)
 app.get('/cod-portal', requireAuth, async (req, res) => {
+  const userId = req.session.userId;
   const currentMonth = new Date().toLocaleString('default', { month: 'long', year: 'numeric' });
   try {
-    const accountsRes = await pool.query("SELECT * FROM cod_accounts ORDER BY name ASC");
+    const accountsRes = await pool.query(
+      "SELECT * FROM cod_accounts WHERE user_id = $1 ORDER BY name ASC", 
+      [userId]
+    );
     const query = `
       SELECT e.id, e.amount, e.month, e.date, e.notes, p.name AS account_name
       FROM cod_entries e
       JOIN cod_accounts p ON e.account_id = p.id
+      WHERE e.user_id = $1
       ORDER BY e.id DESC
     `;
-    const entriesRes = await pool.query(query);
+    const entriesRes = await pool.query(query, [userId]);
     
     let totalCodReceived = 0;
     entriesRes.rows.forEach(row => {
@@ -157,24 +170,30 @@ app.get('/cod-portal', requireAuth, async (req, res) => {
 
 // Actions: Create COD Account & Entry
 app.post('/cod-accounts/create', requireAuth, async (req, res) => {
+  const userId = req.session.userId;
   const { name } = req.body;
   if (name) {
-    await pool.query("INSERT INTO cod_accounts (name) VALUES ($1)", [name.trim()]);
+    await pool.query(
+      "INSERT INTO cod_accounts (user_id, name) VALUES ($1, $2)", 
+      [userId, name.trim()]
+    );
   }
   res.redirect('/cod-portal');
 });
 
 app.post('/cod-entries/create', requireAuth, async (req, res) => {
+  const userId = req.session.userId;
   const { account_id, amount, month, date, notes } = req.body;
   await pool.query(
-    "INSERT INTO cod_entries (account_id, amount, month, date, notes) VALUES ($1, $2, $3, $4, $5)",
-    [account_id, parseFloat(amount), month, date, notes]
+    "INSERT INTO cod_entries (user_id, account_id, amount, month, date, notes) VALUES ($1, $2, $3, $4, $5, $6)",
+    [userId, account_id, parseFloat(amount), month, date, notes]
   );
   res.redirect('/cod-portal');
 });
 
-// 3. Month-Wise Totals (Expenses vs. COD Received vs. Profit/Loss)
+// 3. Month-Wise Totals (Filtered by req.session.userId)
 app.get('/monthly-totals', requireAuth, async (req, res) => {
+  const userId = req.session.userId;
   try {
     const query = `
       SELECT 
@@ -183,19 +202,19 @@ app.get('/monthly-totals', requireAuth, async (req, res) => {
         COALESCE(cod.total_received, 0) AS total_received,
         (COALESCE(cod.total_received, 0) - COALESCE(exp.total_expenses, 0)) AS profit_loss
       FROM (
-        SELECT month FROM expense_entries
+        SELECT month FROM expense_entries WHERE user_id = $1
         UNION
-        SELECT month FROM cod_entries
+        SELECT month FROM cod_entries WHERE user_id = $1
       ) months
       LEFT JOIN (
-        SELECT month, SUM(amount) AS total_expenses FROM expense_entries GROUP BY month
+        SELECT month, SUM(amount) AS total_expenses FROM expense_entries WHERE user_id = $1 GROUP BY month
       ) exp ON months.month = exp.month
       LEFT JOIN (
-        SELECT month, SUM(amount) AS total_received FROM cod_entries GROUP BY month
+        SELECT month, SUM(amount) AS total_received FROM cod_entries WHERE user_id = $1 GROUP BY month
       ) cod ON months.month = cod.month
       ORDER BY months.month DESC
     `;
-    const result = await pool.query(query);
+    const result = await pool.query(query, [userId]);
 
     let overallExpenses = 0;
     let overallReceived = 0;
@@ -218,40 +237,54 @@ app.get('/monthly-totals', requireAuth, async (req, res) => {
 
 // Actions: Expense Account & Entry Creation
 app.post('/accounts/create', requireAuth, async (req, res) => {
+  const userId = req.session.userId;
   const { name } = req.body;
   if (name) {
-    await pool.query("INSERT INTO payment_accounts (name) VALUES ($1)", [name.trim()]);
+    await pool.query(
+      "INSERT INTO payment_accounts (user_id, name) VALUES ($1, $2)", 
+      [userId, name.trim()]
+    );
   }
   res.redirect('/dashboard');
 });
 
 app.post('/entries/create', requireAuth, async (req, res) => {
+  const userId = req.session.userId;
   const { account_id, amount, month, date, notes } = req.body;
   await pool.query(
-    "INSERT INTO expense_entries (account_id, amount, month, date, notes) VALUES ($1, $2, $3, $4, $5)",
-    [account_id, parseFloat(amount), month, date, notes]
+    "INSERT INTO expense_entries (user_id, account_id, amount, month, date, notes) VALUES ($1, $2, $3, $4, $5, $6)",
+    [userId, account_id, parseFloat(amount), month, date, notes]
   );
   res.redirect('/dashboard');
 });
 
-// 4. Sub-page: Manage All Entries (Expenses AND COD Received)
+// 4. Manage All Entries (Filtered by req.session.userId)
 app.get('/entries', requireAuth, async (req, res) => {
+  const userId = req.session.userId;
   try {
-    const expenseAccountsRes = await pool.query("SELECT * FROM payment_accounts ORDER BY name ASC");
+    const expenseAccountsRes = await pool.query(
+      "SELECT * FROM payment_accounts WHERE user_id = $1 ORDER BY name ASC", 
+      [userId]
+    );
     const expenseEntriesRes = await pool.query(`
       SELECT e.id, e.account_id, e.amount, e.month, e.date, e.notes, p.name AS account_name
       FROM expense_entries e
       JOIN payment_accounts p ON e.account_id = p.id
+      WHERE e.user_id = $1
       ORDER BY e.id DESC
-    `);
+    `, [userId]);
 
-    const codAccountsRes = await pool.query("SELECT * FROM cod_accounts ORDER BY name ASC");
+    const codAccountsRes = await pool.query(
+      "SELECT * FROM cod_accounts WHERE user_id = $1 ORDER BY name ASC", 
+      [userId]
+    );
     const codEntriesRes = await pool.query(`
       SELECT e.id, e.account_id, e.amount, e.month, e.date, e.notes, p.name AS account_name
       FROM cod_entries e
       JOIN cod_accounts p ON e.account_id = p.id
+      WHERE e.user_id = $1
       ORDER BY e.id DESC
-    `);
+    `, [userId]);
 
     res.render('entries', {
       accounts: expenseAccountsRes.rows,
@@ -264,45 +297,56 @@ app.get('/entries', requireAuth, async (req, res) => {
   }
 });
 
-// Expense Actions
+// Expense Actions (Secure Edit & Delete)
 app.post('/entries/edit/:id', requireAuth, async (req, res) => {
+  const userId = req.session.userId;
   const { id } = req.params;
   const { account_id, amount, month, date, notes } = req.body;
   await pool.query(
-    "UPDATE expense_entries SET account_id = $1, amount = $2, month = $3, date = $4, notes = $5 WHERE id = $6",
-    [account_id, parseFloat(amount), month, date, notes, id]
+    "UPDATE expense_entries SET account_id = $1, amount = $2, month = $3, date = $4, notes = $5 WHERE id = $6 AND user_id = $7",
+    [account_id, parseFloat(amount), month, date, notes, id, userId]
   );
   res.redirect('/entries');
 });
 
 app.post('/entries/delete/:id', requireAuth, async (req, res) => {
+  const userId = req.session.userId;
   const { id } = req.params;
-  await pool.query("DELETE FROM expense_entries WHERE id = $1", [id]);
+  await pool.query(
+    "DELETE FROM expense_entries WHERE id = $1 AND user_id = $2", 
+    [id, userId]
+  );
   res.redirect('/entries');
 });
 
-// COD Actions (Edit / Delete)
+// COD Actions (Secure Edit & Delete)
 app.post('/cod-entries/edit/:id', requireAuth, async (req, res) => {
+  const userId = req.session.userId;
   const { id } = req.params;
   const { account_id, amount, month, date, notes } = req.body;
   await pool.query(
-    "UPDATE cod_entries SET account_id = $1, amount = $2, month = $3, date = $4, notes = $5 WHERE id = $6",
-    [account_id, parseFloat(amount), month, date, notes, id]
+    "UPDATE cod_entries SET account_id = $1, amount = $2, month = $3, date = $4, notes = $5 WHERE id = $6 AND user_id = $7",
+    [account_id, parseFloat(amount), month, date, notes, id, userId]
   );
   res.redirect('/entries');
 });
 
 app.post('/cod-entries/delete/:id', requireAuth, async (req, res) => {
+  const userId = req.session.userId;
   const { id } = req.params;
-  await pool.query("DELETE FROM cod_entries WHERE id = $1", [id]);
+  await pool.query(
+    "DELETE FROM cod_entries WHERE id = $1 AND user_id = $2", 
+    [id, userId]
+  );
   res.redirect('/entries');
 });
 
 // Settings & Password Reset
 app.get('/settings', requireAuth, (req, res) => res.render('settings', { message: null, error: null }));
 app.post('/settings/change-password', requireAuth, async (req, res) => {
+  const userId = req.session.userId;
   const { currentPassword, newPassword } = req.body;
-  const userRes = await pool.query("SELECT * FROM users WHERE id = $1", [req.session.userId]);
+  const userRes = await pool.query("SELECT * FROM users WHERE id = $1", [userId]);
   const user = userRes.rows[0];
   if (user && bcrypt.compareSync(currentPassword, user.password)) {
     const newHash = bcrypt.hashSync(newPassword, 10);

@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const pool = require('../db'); // Clean DB connection client
+const pool = require('../db');
 
 // Auth Middleware Check
 function requireAuth(req, res, next) {
@@ -8,17 +8,22 @@ function requireAuth(req, res, next) {
   res.redirect('/login');
 }
 
-// 1. Ledger Overview Page (/ledger)
+// 1. Ledger Overview Page (/ledger) - Filtered by req.session.userId
 router.get('/', requireAuth, async (req, res) => {
+  const userId = req.session.userId;
   try {
-    const accountsRes = await pool.query("SELECT * FROM ledger_accounts ORDER BY name ASC");
+    const accountsRes = await pool.query(
+      "SELECT * FROM ledger_accounts WHERE user_id = $1 ORDER BY name ASC", 
+      [userId]
+    );
     
     const entriesRes = await pool.query(`
       SELECT l.id, l.account_id, l.type, l.amount, l.date, l.notes, a.name AS account_name
       FROM ledger_entries l
       JOIN ledger_accounts a ON l.account_id = a.id
+      WHERE l.user_id = $1
       ORDER BY l.id DESC
-    `);
+    `, [userId]);
 
     const balanceMap = {};
     accountsRes.rows.forEach(acc => {
@@ -51,33 +56,43 @@ router.get('/', requireAuth, async (req, res) => {
 
 // Action: Create Ledger Account
 router.post('/accounts/create', requireAuth, async (req, res) => {
+  const userId = req.session.userId;
   const { name } = req.body;
   if (name) {
-    await pool.query("INSERT INTO ledger_accounts (name) VALUES ($1)", [name.trim()]);
+    await pool.query(
+      "INSERT INTO ledger_accounts (user_id, name) VALUES ($1, $2)", 
+      [userId, name.trim()]
+    );
   }
   res.redirect('/ledger');
 });
 
 // Action: Add Ledger Entry
 router.post('/entries/create', requireAuth, async (req, res) => {
+  const userId = req.session.userId;
   const { account_id, type, amount, date, notes } = req.body;
   await pool.query(
-    "INSERT INTO ledger_entries (account_id, type, amount, date, notes) VALUES ($1, $2, $3, $4, $5)",
-    [account_id, type, parseFloat(amount), date, notes]
+    "INSERT INTO ledger_entries (user_id, account_id, type, amount, date, notes) VALUES ($1, $2, $3, $4, $5, $6)",
+    [userId, account_id, type, parseFloat(amount), date, notes]
   );
   res.redirect('/ledger');
 });
 
-// 2. Sub-page: Manage All Ledger Entries (/ledger/entries)
+// 2. Sub-page: Manage All Ledger Entries (/ledger/entries) - Filtered by req.session.userId
 router.get('/entries', requireAuth, async (req, res) => {
+  const userId = req.session.userId;
   try {
-    const accountsRes = await pool.query("SELECT * FROM ledger_accounts ORDER BY name ASC");
+    const accountsRes = await pool.query(
+      "SELECT * FROM ledger_accounts WHERE user_id = $1 ORDER BY name ASC", 
+      [userId]
+    );
     const entriesRes = await pool.query(`
       SELECT l.id, l.account_id, l.type, l.amount, l.date, l.notes, a.name AS account_name
       FROM ledger_entries l
       JOIN ledger_accounts a ON l.account_id = a.id
+      WHERE l.user_id = $1
       ORDER BY l.id DESC
-    `);
+    `, [userId]);
 
     res.render('ledger_entries', {
       accounts: accountsRes.rows,
@@ -90,19 +105,24 @@ router.get('/entries', requireAuth, async (req, res) => {
 
 // Action: Edit Ledger Entry
 router.post('/entries/edit/:id', requireAuth, async (req, res) => {
+  const userId = req.session.userId;
   const { id } = req.params;
   const { account_id, type, amount, date, notes } = req.body;
   await pool.query(
-    "UPDATE ledger_entries SET account_id = $1, type = $2, amount = $3, date = $4, notes = $5 WHERE id = $6",
-    [account_id, type, parseFloat(amount), date, notes, id]
+    "UPDATE ledger_entries SET account_id = $1, type = $2, amount = $3, date = $4, notes = $5 WHERE id = $6 AND user_id = $7",
+    [account_id, type, parseFloat(amount), date, notes, id, userId]
   );
   res.redirect('/ledger/entries');
 });
 
 // Action: Delete Ledger Entry
 router.post('/entries/delete/:id', requireAuth, async (req, res) => {
+  const userId = req.session.userId;
   const { id } = req.params;
-  await pool.query("DELETE FROM ledger_entries WHERE id = $1", [id]);
+  await pool.query(
+    "DELETE FROM ledger_entries WHERE id = $1 AND user_id = $2", 
+    [id, userId]
+  );
   res.redirect('/ledger/entries');
 });
 
